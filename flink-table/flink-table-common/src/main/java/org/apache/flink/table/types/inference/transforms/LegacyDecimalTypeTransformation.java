@@ -38,9 +38,20 @@ public class LegacyDecimalTypeTransformation implements TypeTransformation {
 	public DataType transform(DataType typeToTransform) {
 		LogicalType logicalType = typeToTransform.getLogicalType();
 		if (logicalType instanceof LegacyTypeInformationType && logicalType.getTypeRoot() == LogicalTypeRoot.DECIMAL) {
+			int precision = DecimalType.MAX_PRECISION;
+			int scale = 18;
+			String typeInfo = ((LegacyTypeInformationType<?>) logicalType).getTypeInformation().toString();
+			if (typeInfo.startsWith("Decimal(")) {
+				try {
+					precision = Integer.parseInt(typeInfo.substring(typeInfo.indexOf("(") + 1, typeInfo.indexOf(",")).trim());
+					scale = Integer.parseInt(typeInfo.substring(typeInfo.indexOf(",") + 1, typeInfo.indexOf(")")).trim());
+				} catch (Exception e) {
+				}
+			}
+
 			DataType decimalType = DataTypes
-				.DECIMAL(DecimalType.MAX_PRECISION, 18)
-				.bridgedTo(typeToTransform.getConversionClass());
+					.DECIMAL(precision, scale)
+					.bridgedTo(typeToTransform.getConversionClass());
 			return logicalType.isNullable() ? decimalType : decimalType.notNull();
 		}
 		return typeToTransform;
