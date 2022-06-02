@@ -38,6 +38,7 @@ import org.apache.flink.table.catalog.DataTypeFactory;
 import org.apache.flink.table.types.DataType;
 import org.apache.flink.table.types.DataTypeQueryable;
 import org.apache.flink.table.types.extraction.ExtractionUtils;
+import org.apache.flink.table.types.logical.DecimalType;
 import org.apache.flink.table.types.logical.LogicalType;
 import org.apache.flink.table.types.logical.RawType;
 import org.apache.flink.table.types.logical.RowType;
@@ -175,6 +176,26 @@ public final class TypeInfoDataTypeConverter {
 
         if (typeInfo instanceof RowTypeInfo) {
             return convertToRowType(dataTypeFactory, (RowTypeInfo) typeInfo);
+        } else if (typeInfo.getTypeClass().equals(BigDecimal.class)) {
+            String typeStr = typeInfo.toString();
+            int precision = DecimalType.MAX_PRECISION;
+            int scale = 18;
+            if (typeStr.startsWith("Decimal(")) {
+                try {
+                    precision =
+                            Integer.parseInt(
+                                    typeStr.substring(
+                                                    typeStr.indexOf("(") + 1, typeStr.indexOf(","))
+                                            .trim());
+                    scale =
+                            Integer.parseInt(
+                                    typeStr.substring(
+                                                    typeStr.indexOf(",") + 1, typeStr.indexOf(")"))
+                                            .trim());
+                } catch (Exception e) {
+                }
+            }
+            return DataTypes.DECIMAL(precision, scale).bridgedTo(BigDecimal.class);
         } else if (typeInfo instanceof ObjectArrayTypeInfo) {
             return convertToArrayType(
                     dataTypeFactory,

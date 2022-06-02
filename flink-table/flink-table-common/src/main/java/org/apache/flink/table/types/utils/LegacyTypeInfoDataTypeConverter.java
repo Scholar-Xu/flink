@@ -52,6 +52,7 @@ import org.apache.flink.table.typeutils.TimeIntervalTypeInfo;
 import org.apache.flink.types.Row;
 import org.apache.flink.util.Preconditions;
 
+import java.math.BigDecimal;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -172,6 +173,8 @@ public final class LegacyTypeInfoDataTypeConverter {
 
         if (typeInfo instanceof RowTypeInfo) {
             return convertToRowType((RowTypeInfo) typeInfo);
+        } else if (typeInfo.getTypeClass().equals(BigDecimal.class)) {
+            return createLegacyType(LogicalTypeRoot.DECIMAL, typeInfo);
         } else if (typeInfo instanceof ObjectArrayTypeInfo) {
             return convertToArrayType(
                     typeInfo.getTypeClass(),

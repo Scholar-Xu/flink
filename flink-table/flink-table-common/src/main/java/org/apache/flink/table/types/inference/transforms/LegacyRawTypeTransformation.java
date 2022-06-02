@@ -19,9 +19,11 @@
 package org.apache.flink.table.types.inference.transforms;
 
 import org.apache.flink.api.common.typeinfo.TypeInformation;
+import org.apache.flink.table.api.DataTypes;
 import org.apache.flink.table.types.AtomicDataType;
 import org.apache.flink.table.types.DataType;
 import org.apache.flink.table.types.inference.TypeTransformation;
+import org.apache.flink.table.types.logical.DecimalType;
 import org.apache.flink.table.types.logical.LegacyTypeInformationType;
 import org.apache.flink.table.types.logical.LogicalType;
 import org.apache.flink.table.types.logical.LogicalTypeRoot;
@@ -35,12 +37,39 @@ public class LegacyRawTypeTransformation implements TypeTransformation {
     @Override
     public DataType transform(DataType typeToTransform) {
         LogicalType logicalType = typeToTransform.getLogicalType();
-        if (logicalType instanceof LegacyTypeInformationType
-                && logicalType.getTypeRoot() == LogicalTypeRoot.RAW) {
-            TypeInformation<?> typeInfo =
-                    ((LegacyTypeInformationType<?>) logicalType).getTypeInformation();
-            DataType rawDataType = new AtomicDataType(new TypeInformationRawType<>(typeInfo));
-            return logicalType.isNullable() ? rawDataType : rawDataType.notNull();
+        if (logicalType instanceof LegacyTypeInformationType) {
+            if (logicalType.getTypeRoot() == LogicalTypeRoot.RAW) {
+                TypeInformation<?> typeInfo =
+                        ((LegacyTypeInformationType<?>) logicalType).getTypeInformation();
+                DataType rawDataType = new AtomicDataType(new TypeInformationRawType<>(typeInfo));
+                return logicalType.isNullable() ? rawDataType : rawDataType.notNull();
+            } else if (logicalType.getTypeRoot() == LogicalTypeRoot.DECIMAL) {
+                String typeInfo =
+                        ((LegacyTypeInformationType) logicalType).getTypeInformation().toString();
+                int precision = DecimalType.MAX_PRECISION;
+                int scale = 18;
+                if (typeInfo.startsWith("Decimal(")) {
+                    try {
+                        precision =
+                                Integer.parseInt(
+                                        typeInfo.substring(
+                                                        typeInfo.indexOf("(") + 1,
+                                                        typeInfo.indexOf(","))
+                                                .trim());
+                        scale =
+                                Integer.parseInt(
+                                        typeInfo.substring(
+                                                        typeInfo.indexOf(",") + 1,
+                                                        typeInfo.indexOf(")"))
+                                                .trim());
+                    } catch (Exception e) {
+                    }
+                }
+                DataType decimalType =
+                        DataTypes.DECIMAL(precision, scale)
+                                .bridgedTo(typeToTransform.getConversionClass());
+                return logicalType.isNullable() ? decimalType : decimalType.notNull();
+            }
         }
         return typeToTransform;
     }
