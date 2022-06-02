@@ -76,7 +76,7 @@ public abstract class ElasticsearchSinkBase<T, C extends AutoCloseable> extends 
         implements CheckpointedFunction {
 
     private static final long serialVersionUID = -1007596293618451942L;
-    
+
     private static final Logger logger = LoggerFactory.getLogger(ElasticsearchSinkBase.class);
 
     // ------------------------------------------------------------------------
@@ -221,14 +221,11 @@ public abstract class ElasticsearchSinkBase<T, C extends AutoCloseable> extends 
      */
     private final AtomicReference<Throwable> failureThrowable = new AtomicReference<>();
 
-	// custom metrics start
-	private transient Counter numRecordsOut;
-	private transient Counter numBytesOut;
-	private transient Counter tookTime;
-	private transient Meter numRecordsOutRate;
-	private transient Meter numBytesOutRate;
-	private transient Meter tookTimeRate;
-	// custom metrics end
+    // custom metrics start
+    private transient Counter numRecordsOut;
+    private transient Counter numBytesOut;
+    private transient Counter tookTime;
+    // custom metrics end
 
     public ElasticsearchSinkBase(
             ElasticsearchApiCallBridge<C> callBridge,
@@ -339,16 +336,16 @@ public abstract class ElasticsearchSinkBase<T, C extends AutoCloseable> extends 
                         bulkProcessor, flushOnCheckpoint, numPendingRequests);
         failureRequestIndexer = new BufferingNoOpRequestIndexer();
 
-		// custom metrics int start
-		final MetricGroup metricGroup = this.getRuntimeContext().getMetricGroup();
-		final MetricGroup esMetrics = metricGroup.addGroup("es_metrics");
-		this.numRecordsOut = esMetrics.counter("numRecordsOut");
-		this.numBytesOut = esMetrics.counter("numBytesOut");
-		this.tookTime = esMetrics.counter("tookTime");
-		this.numRecordsOutRate = esMetrics.meter("numRecordsOutRate", (Meter) new MeterView(this.numRecordsOut));
-		this.numBytesOutRate = esMetrics.meter("numBytesOutRate", (Meter) new MeterView(this.numBytesOut));
-		this.tookTimeRate = esMetrics.meter("tookTimeRate", (Meter) new MeterView(this.tookTime));
-		// custom metrics init end
+        // custom metrics int start
+        final MetricGroup metricGroup = this.getRuntimeContext().getMetricGroup();
+        final MetricGroup esMetrics = metricGroup.addGroup("es_metrics");
+        this.numRecordsOut = esMetrics.counter("numRecordsOut");
+        this.numBytesOut = esMetrics.counter("numBytesOut");
+        this.tookTime = esMetrics.counter("tookTime");
+        esMetrics.meter("numRecordsOutRate", (Meter) new MeterView(this.numRecordsOut));
+        esMetrics.meter("numBytesOutRate", (Meter) new MeterView(this.numBytesOut));
+        esMetrics.meter("tookTimeRate", (Meter) new MeterView(this.tookTime));
+        // custom metrics init end
 
         elasticsearchSinkFunction.open();
     }
@@ -470,15 +467,20 @@ public abstract class ElasticsearchSinkBase<T, C extends AutoCloseable> extends 
         @Override
         public void afterBulk(long executionId, BulkRequest request, BulkResponse response) {
 
-			// custom metrics compute start
-			final long sizeInBytes = request.estimatedSizeInBytes();
-			final int actions = request.numberOfActions();
-			final TimeValue took = response.getTook();
-			ElasticsearchSinkBase.this.numRecordsOut.inc(actions);
-			ElasticsearchSinkBase.this.numBytesOut.inc(sizeInBytes);
-			ElasticsearchSinkBase.this.tookTime.inc(took.getMillis());
-            logger.info("executionId is {},write bytes {},write actions {},took time {}", executionId, sizeInBytes, actions, took);
-			// custom metrics compute end
+            // custom metrics compute start
+            final long sizeInBytes = request.estimatedSizeInBytes();
+            final int actions = request.numberOfActions();
+            final TimeValue took = response.getTook();
+            ElasticsearchSinkBase.this.numRecordsOut.inc(actions);
+            ElasticsearchSinkBase.this.numBytesOut.inc(sizeInBytes);
+            ElasticsearchSinkBase.this.tookTime.inc(took.getMillis());
+            logger.info(
+                    "executionId is {},write bytes {},write actions {},took time {}",
+                    executionId,
+                    sizeInBytes,
+                    actions,
+                    took);
+            // custom metrics compute end
 
             if (response.hasFailures()) {
                 BulkItemResponse itemResponse;
