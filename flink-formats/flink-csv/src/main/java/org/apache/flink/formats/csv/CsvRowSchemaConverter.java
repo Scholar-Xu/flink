@@ -33,6 +33,7 @@ import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.dataformat.csv.Csv
 import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.dataformat.csv.CsvSchema.Builder;
 import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.dataformat.csv.CsvSchema.Column;
 
+import java.math.BigDecimal;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
@@ -196,6 +197,8 @@ public final class CsvRowSchemaConverter {
         } else if (info instanceof PrimitiveArrayTypeInfo
                 && ((PrimitiveArrayTypeInfo) info).getComponentType() == Types.BYTE) {
             return CsvSchema.ColumnType.STRING;
+        } else if (info.getTypeClass().equals(BigDecimal.class)) {
+            return CsvSchema.ColumnType.NUMBER;
         } else {
             throw new IllegalArgumentException(
                     "Unsupported type information '"

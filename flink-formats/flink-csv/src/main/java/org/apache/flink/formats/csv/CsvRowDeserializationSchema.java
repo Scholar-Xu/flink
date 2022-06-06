@@ -39,6 +39,7 @@ import java.io.Serializable;
 import java.lang.reflect.Array;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.math.RoundingMode;
 import java.sql.Date;
 import java.sql.Time;
 import java.sql.Timestamp;
@@ -354,6 +355,17 @@ public final class CsvRowDeserializationSchema implements DeserializationSchema<
         } else if (info instanceof PrimitiveArrayTypeInfo
                 && ((PrimitiveArrayTypeInfo) info).getComponentType() == Types.BYTE) {
             return createByteArrayRuntimeConverter(ignoreParseErrors);
+        } else if (info.getTypeClass().equals(BigDecimal.class)) {
+            String str = info.toString();
+            String scaleStr = null;
+            if (str.startsWith("Decimal(") && str.contains(",") && str.endsWith(")")) {
+                scaleStr = str.substring(str.indexOf(",") + 1, str.indexOf(")"));
+            }
+            int finalScale = scaleStr == null ? 18 : Integer.parseInt(scaleStr);
+            return (RuntimeConverter)
+                    node ->
+                            new BigDecimal(node.asText().trim())
+                                    .setScale(finalScale, RoundingMode.HALF_UP);
         } else {
             throw new RuntimeException("Unsupported type information '" + info + "'.");
         }
