@@ -44,6 +44,7 @@ import java.io.Serializable;
 import java.lang.reflect.Array;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.math.RoundingMode;
 import java.sql.Date;
 import java.sql.Time;
 import java.sql.Timestamp;
@@ -415,6 +416,18 @@ public class JsonRowDeserializationSchema implements DeserializationSchema<Row> 
             return Optional.of(this::convertToLocalTime);
         } else if (simpleTypeInfo == Types.LOCAL_DATE_TIME) {
             return Optional.of(this::convertToLocalDateTime);
+        } else if (simpleTypeInfo.getTypeClass().equals(BigDecimal.class)) {
+            String str = simpleTypeInfo.toString();
+            String scaleStr = null;
+            if (str.startsWith("Decimal(") && str.contains(",") && str.endsWith(")")) {
+                scaleStr = str.substring(str.indexOf(",") + 1, str.indexOf(")"));
+            }
+            int finalScale = scaleStr == null ? 18 : Integer.parseInt(scaleStr);
+            return Optional.of(
+                    (DeserializationRuntimeConverter)
+                            (mapper, jsonNode) ->
+                                    new BigDecimal(jsonNode.asText().trim())
+                                            .setScale(finalScale, RoundingMode.HALF_UP));
         } else {
             return Optional.empty();
         }
